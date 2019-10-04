@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>HTTP API assignment 2</title>
+  <link rel="stylesheet" type="text/css" href="./style.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react-dom.min.js"></script>
+  <script type="text/babel">
+  const handleDelete = (e, xhr, rowId, itemId, name) => {
+    const inventory = document.querySelector('#inventory');
+    const row = document.querySelector(`#${rowId}`);
+    inventory.removeChild(row);
+
+    const formData = `name=${name}&id=${itemId}`;
+    const deleteRequest = "/deleteItem?" + formData;
+
+    xhr.open('DELETE', deleteRequest);
+    xhr.setRequestHeader ('Accept', 'application/json');
+    xhr.onload = () => handleResponse(xhr, false);
+    xhr.send(formData);
+
+    e.preventDefault();
+    return false;
+  };
+
+  const handlePut = (xhr, obj, index) => {
+    let putRequest = `/activateItem?name=${obj.name}&item=${obj.inventory[index].item}`;
+
+    xhr.open('PUT', putRequest);
+    xhr.setRequestHeader ('Accept', 'application/json');
+    xhr.onload = () => handleResponse(xhr, false);
+    
+    xhr.send(putRequest);
+  };
+
+  //function to parse our response
+  const parseJSON = (xhr) => {
+    const nameTitle = document.querySelector("#name");
+    
+    const obj = JSON.parse(xhr.response);
+
+    if (obj.name) {
+      nameTitle.innerHTML = obj.name;
+    }
+    if (obj.inventory && obj.inventory.length > 0) {
+      for (let index = 0; index < obj.inventory.length; index++) {
+        if (!obj.inventory[index].active) {
+          const inventory = document.querySelector('#inventory');
+          const row = document.createElement('tr');
+          row.id = `row${index}`;
+          const column = document.createElement('th');
+          column.id = 'inventoryItem';
+          const column1 = document.createElement('th');
+          const column2 = document.createElement('th');
+          const column3 = document.createElement('th');
+          const deleteButton = document.createElement('button');
+
+          inventory.appendChild(row);
+          column.innerHTML = obj.inventory[index].item;
+          row.appendChild(column);
+          column1.innerHTML = obj.inventory[index].quantity;
+          row.appendChild(column1);
+          column2.innerHTML = obj.inventory[index].weight;
+          row.appendChild(column2);
+          column3.innerHTML = obj.inventory[index].price;
+          row.appendChild(column3);
+
+          deleteButton.innerHTML = 'X';
+          deleteButton.id = 'delete';
+          row.appendChild(deleteButton);
+
+          const deleteItem = (e) => handleDelete(e, xhr, row.id, obj.inventory[index].id, obj.name);
+
+          deleteButton.addEventListener('click', deleteItem)
+
+          handlePut(xhr, obj, index);
+        }
+      }
+    }
+  };
+
+  // Function to handle our xhr response
+  const handleResponse = (xhr, parseResponse) => {
+    if(parseResponse){
+        parseJSON(xhr);
+    }
+  };
+    
+    // Function to send ajax
+  const sendAjax = (e, form) => {
+    const nameAction = form.getAttribute('action');
+    const nameMethod = form.getAttribute('method');
+
+    const xhr = new XMLHttpRequest();
+  
+    if (nameMethod == "GET") {
+      const characterNameField = form.querySelector('#character');
+      const formData = `name=${characterNameField.value}`;
+      const getRequest = nameAction + "?" + formData;
+
+      xhr.open(nameMethod, getRequest);
+      xhr.setRequestHeader ('Accept', 'application/json');
+      xhr.onload = () => handleResponse(xhr, true);
+
+      xhr.send(formData);
+    }
+    else if(nameMethod == "POST"){
+      const itemField = form.querySelector('#itemName');
+      const quantityField = form.querySelector('#quantity');
+      const weightField = form.querySelector('#weight');
+      const priceField = form.querySelector('#price');
+
+      const characterName = document.querySelector("#name");
+
+      const formData = `name=${characterName.innerHTML}&item=${itemField.value}&quantity=${quantityField.value}&weight=${weightField.value}&price=${priceField.value}`;
+
+      const postRequest = nameAction + "?" + formData;
+
+
+      xhr.open(nameMethod, postRequest);
+      xhr.setRequestHeader ('Accept', 'application/json');
+      xhr.onload = () => handleResponse(xhr, true);
+
+      
+      xhr.send(formData);
+    }
+
+    e.preventDefault();
+    return false;
+  };
+
+  const updateName = (e) => {
+    let character = document.querySelector('#character');
+
+    if(character.value != "Enter character name..."){
+      const nameForm = document.querySelector('.nameForm');
+      const inventoryForm = document.querySelector('.inventoryForm');
+
+      sendAjax(e, nameForm);
+    }
+  };
+  
+  // Initialization function
+  const init = () => {
+    // const inventory = document.querySelector('#inventory');
+    // const row = document.createElement('tr');
+    // const column = document.createElement('th');
+    // const column1 = document.createElement('th');
+    // const column2 = document.createElement('th');
+    // const column3 = document.createElement('th');
+
+    // inventory.appendChild(row);
+    // column.innerHTML = "Breastplate";
+    // row.appendChild(column);
+    // column1.innerHTML = "1";
+    // row.appendChild(column1);
+    // column2.innerHTML = "20";
+    // row.appendChild(column2);
+    // column3.innerHTML = "400";
+    // row.appendChild(column3);
+    
+    const nameForm = document.querySelector('.nameForm');
+    const addForm = document.querySelector('#addForm');
+
+    const addEvent = (e) => sendAjax(e, addForm);
+
+    nameForm.addEventListener('submit', updateName);
+    addForm.addEventListener('submit', addEvent);
+  };
+
+  window.onload = init;
+  </script>
+</head>
+<body background="dnd.jpg">
+  <section id="top">
+    <h1>D&D 5e Inventory Manager</h3>
+    <form action="/getCharacter" method="GET" class="nameForm">
+      Character Name: <input type="text" id="character" required="true"/>
+      <button>Select</button>
+    </form>
+    <div id="name"></div>  
+    <form id="addForm" action="/addItem" method="POST">
+      Item: <input type="text" required="true" id="itemName"/>
+      Quantity: <input type="number" required="true" id="quantity"/>
+      Weight (lb): <input type="number" required="true" id="weight"/>
+      Price (gp): <input type="number" required="true" id="price"/>
+      <button id="addItem">Add</button>
+    </form>  
+    <form class="inventoryForm">
+      <table id="inventory">Inventory
+        <tr id="header">
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Weight (lb)</th>
+          <th>Price (gp)</th>
+        </tr>
+      </table>
+    </form>
+  </section>
+</body>
+</html>
