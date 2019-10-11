@@ -35,7 +35,7 @@
 
   // Clears the inventory UI, and deactivates all items if GETing another character
   // or clears the name innerHTML if DELETE is called
-  const clearInventoryDisplay = (e, xhr, nameMethod) => {    
+  const clearInventoryDisplay = (e, xhr, nameMethod, nameAction) => {    
     const inventory = document.querySelector('#inventory');
     const rows = inventory.querySelectorAll('tr');
     
@@ -57,7 +57,7 @@
 
       e.preventDefault();
       return false;
-    } else if (nameMethod == "DELETE"){
+    } else if (nameMethod == "DELETE" && nameAction == "/deleteCharacter"){
       const characterName = document.querySelector("#name");
       characterName.innerHTML = '';
     }
@@ -204,7 +204,7 @@
 
       xhr.open(nameMethod, deleteRequest);
       xhr.setRequestHeader ('Accept', 'application/json');
-      xhr.onload = () => clearInventoryDisplay(e, xhr, nameMethod);
+      xhr.onload = () => clearInventoryDisplay(e, xhr, nameMethod, nameAction);
       
       xhr.send(formData);
     }
