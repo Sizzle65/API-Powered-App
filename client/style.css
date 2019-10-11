@@ -34,7 +34,6 @@ html, body {
 
 #inventory {
   font-size:0.8em;
-  color:black;
 }
 
 table {
@@ -50,12 +49,22 @@ td, th {
   text-align: left;
   padding: 5px;
   font-size:0.75em;
+  color:black;
 }
 
-#header th {
+#header th, #totals th {
   background-color:#9b9b9b;
   padding: 8px;
   font-size:0.8em;
+}
+
+#totals {
+  margin-top: 50px;
+  font-size:0.8em;
+}
+
+.totals {
+  color:darkred;
 }
 
 #save {
@@ -77,3 +86,11 @@ td, th {
   border-radius:1em;
   background-color:white;
 }
+
+#clearButton {
+  margin:10px;
+};
+
+#deleteChar {
+  margin:10px;
+};

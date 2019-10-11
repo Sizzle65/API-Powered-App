@@ -1,17 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>HTTP API assignment 2</title>
+  <title>Project 1</title>
   <link rel="stylesheet" type="text/css" href="./style.css">
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react-dom.min.js"></script>
   <script type="text/babel">
+
+  // Calculates the totals of quantity, price and weight each time the inventory changes
+  const calculateTotals = () => {
+    const quantity = document.querySelector('#totalQuantity');
+    const weight = document.querySelector('#totalWeight');
+    const price = document.querySelector('#totalPrice');
+    const inventory = document.querySelector('#inventory');
+    const rows = inventory.querySelectorAll('tr');
+    let totalQ = 0;
+    let totalW = 0;
+    let totalP= 0;
+
+    for (let index = 1; index < rows.length; index++) {
+      let columns = rows[index].getElementsByTagName('th');
+      totalQ += parseInt(columns[1].innerHTML);
+      totalW += parseInt(columns[2].innerHTML);
+      totalP += parseInt(columns[3].innerHTML);
+    }
+
+    quantity.innerHTML = totalQ;
+    weight.innerHTML = totalW;
+    price.innerHTML = totalP;
+
+  };
+
+  // Clears the inventory UI, and deactivates all items if GETing another character
+  // or clears the name innerHTML if DELETE is called
+  const clearInventoryDisplay = (e, xhr, nameMethod) => {    
+    const inventory = document.querySelector('#inventory');
+    const rows = inventory.querySelectorAll('tr');
+    
+    for (let index = 1; index < rows.length; index++) {
+      rows[index].parentNode.removeChild(rows[index]);
+    }
+
+    calculateTotals(rows);
+
+    if (nameMethod == "GET") {
+      const nameTitle = document.querySelector("#name");
+      const putRequest = `/deactivateItem?name=${nameTitle.innerHTML}`;
+
+      xhr.open('PUT', putRequest);
+      xhr.setRequestHeader ('Accept', 'application/json');
+      xhr.onload = () => handleResponse(xhr, false);
+      
+      xhr.send(putRequest);
+
+      e.preventDefault();
+      return false;
+    } else if (nameMethod == "DELETE"){
+      const characterName = document.querySelector("#name");
+      characterName.innerHTML = '';
+    }
+  };
+
+  // Handles item deletion
   const handleDelete = (e, xhr, rowId, itemId, name) => {
     const inventory = document.querySelector('#inventory');
     const row = document.querySelector(`#${rowId}`);
     inventory.removeChild(row);
+
+    calculateTotals();
 
     const formData = `name=${name}&id=${itemId}`;
     const deleteRequest = "/deleteItem?" + formData;
@@ -25,6 +83,7 @@
     return false;
   };
 
+  // Handles put requests to activate items
   const handlePut = (xhr, obj, index) => {
     let putRequest = `/activateItem?name=${obj.name}&item=${obj.inventory[index].item}`;
 
@@ -44,12 +103,14 @@
     if (obj.name) {
       nameTitle.innerHTML = obj.name;
     }
+    // Creates the inventory UI with all the deactive items in the returned characters inventory
     if (obj.inventory && obj.inventory.length > 0) {
       for (let index = 0; index < obj.inventory.length; index++) {
         if (!obj.inventory[index].active) {
           const inventory = document.querySelector('#inventory');
           const row = document.createElement('tr');
           row.id = `row${index}`;
+          row.classList.add('item');
           const column = document.createElement('th');
           column.id = 'inventoryItem';
           const column1 = document.createElement('th');
@@ -69,12 +130,18 @@
 
           deleteButton.innerHTML = 'X';
           deleteButton.id = 'delete';
+
+          // Calls calculate total after adding all items
+          calculateTotals();
+          
           row.appendChild(deleteButton);
 
+          // Creates an event listener for handing single item deletion
           const deleteItem = (e) => handleDelete(e, xhr, row.id, obj.inventory[index].id, obj.name);
 
           deleteButton.addEventListener('click', deleteItem)
 
+          // Activates all items so they won't be added back to the UI
           handlePut(xhr, obj, index);
         }
       }
@@ -95,7 +162,9 @@
 
     const xhr = new XMLHttpRequest();
   
+    // Sends a GET request for the selected character, clears the inventory in prep for the items it has
     if (nameMethod == "GET") {
+      clearInventoryDisplay(e, xhr, nameMethod);
       const characterNameField = form.querySelector('#character');
       const formData = `name=${characterNameField.value}`;
       const getRequest = nameAction + "?" + formData;
@@ -105,8 +174,9 @@
       xhr.onload = () => handleResponse(xhr, true);
 
       xhr.send(formData);
-    }
-    else if(nameMethod == "POST"){
+
+    // Sends POST request with item information to add it to the selected characters inventory
+    } else if(nameMethod == "POST"){
       const itemField = form.querySelector('#itemName');
       const quantityField = form.querySelector('#quantity');
       const weightField = form.querySelector('#weight');
@@ -122,7 +192,19 @@
       xhr.open(nameMethod, postRequest);
       xhr.setRequestHeader ('Accept', 'application/json');
       xhr.onload = () => handleResponse(xhr, true);
+      
+      xhr.send(formData);
+    
+    // Sends DELETE request to delete the selected character
+    } else if(nameMethod == "DELETE"){
+      const characterName = document.querySelector("#name");
 
+      const formData = `name=${characterName.innerHTML}`;
+      const deleteRequest = nameAction + "?" + formData;
+
+      xhr.open(nameMethod, deleteRequest);
+      xhr.setRequestHeader ('Accept', 'application/json');
+      xhr.onload = () => clearInventoryDisplay(e, xhr, nameMethod);
       
       xhr.send(formData);
     }
@@ -131,43 +213,31 @@
     return false;
   };
 
+  // Updates the name of the character you are editing
   const updateName = (e) => {
     let character = document.querySelector('#character');
 
-    if(character.value != "Enter character name..."){
-      const nameForm = document.querySelector('.nameForm');
-      const inventoryForm = document.querySelector('.inventoryForm');
+    const nameForm = document.querySelector('.nameForm');
+    const inventoryForm = document.querySelector('.inventoryForm');
 
-      sendAjax(e, nameForm);
-    }
+    sendAjax(e, nameForm);
   };
   
   // Initialization function
   const init = () => {
-    // const inventory = document.querySelector('#inventory');
-    // const row = document.createElement('tr');
-    // const column = document.createElement('th');
-    // const column1 = document.createElement('th');
-    // const column2 = document.createElement('th');
-    // const column3 = document.createElement('th');
-
-    // inventory.appendChild(row);
-    // column.innerHTML = "Breastplate";
-    // row.appendChild(column);
-    // column1.innerHTML = "1";
-    // row.appendChild(column1);
-    // column2.innerHTML = "20";
-    // row.appendChild(column2);
-    // column3.innerHTML = "400";
-    // row.appendChild(column3);
-    
     const nameForm = document.querySelector('.nameForm');
     const addForm = document.querySelector('#addForm');
+    const clearButton = document.querySelector('#clearButton');
+    const deleteChar = document.querySelector('#deleteChar');
 
     const addEvent = (e) => sendAjax(e, addForm);
+    const clearEvent = (e) => sendAjax(e, clearButton);
+    const deleteEvent = (e) => sendAjax(e, deleteChar);
 
     nameForm.addEventListener('submit', updateName);
     addForm.addEventListener('submit', addEvent);
+    clearButton.addEventListener('click', clearEvent);
+    deleteChar.addEventListener('click', deleteEvent);
   };
 
   window.onload = init;
@@ -197,7 +267,19 @@
           <th>Price (gp)</th>
         </tr>
       </table>
+      <table id="totals">
+          <tr>
+            <th>Total Quantity</th>
+            <th class="totals" id="totalQuantity"></th>
+            <th>Total Weight (lb)</th>
+            <th class="totals" id="totalWeight"></th>
+            <th>Total Price (gp)</th>
+            <th class="totals" id="totalPrice"></th>
+          </tr>
+        </table>
     </form>
+    <button action="/clearInventory" method="DELETE" id="clearButton">Clear Inventory</button>
+    <button action="/deleteCharacter" method="DELETE" id="deleteChar">Delete Character</button>
   </section>
 </body>
 </html>
